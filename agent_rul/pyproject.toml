@@ -1,0 +1,28 @@
+[project]
+name = "agent-rul"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "joshoua-bigler", email = "joshoua.bigler@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+  "openai>=1.107.0",
+  "openai-agents>=0.2.11",
+  "langfuse>=3.5.1",
+  "langchain>=0.3.27",
+  "langchain-core>=0.3.76",
+  "langchain_community>=0.3.30",
+  "langchain-openai>=0.3.33",
+  "langgraph>=0.6.7",
+  "rul_lib>=1.0.0",
+
+]
+
+[project.scripts]
+agent-rul = "agent_rul:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

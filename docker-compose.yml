@@ -1,0 +1,64 @@
+services:
+  thesis-mlflow-db:
+    container_name: thesis-mlflow-db
+    image: postgres
+    restart: unless-stopped
+    shm_size: 128mb
+    ports:
+      - 5433:5432
+    volumes:
+      - ./local_data/mlflow/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: 1
+    networks:
+      - thesis
+
+  thesis-mlflow:
+    container_name: thesis-mlflow
+    build:
+      context: ./docker_images/mlflow_server
+      dockerfile: Dockerfile
+    depends_on:
+      - thesis-mlflow-db
+    restart: unless-stopped
+    networks:
+      - thesis
+    expose:
+      - "5000"
+    ports:
+      - 5000:5000
+    volumes:
+      - ./local_data/mlflow:/opt
+      - ./local_data/mlflow/artifacts:/mlartifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://postgres:1@thesis-mlflow-db:5432/postgres
+
+  thesis-tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: thesis-tensorboard
+    command: >
+      tensorboard --logdir=/logs --host=0.0.0.0 --port=6006
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./local_data/ray_results/hybrid_femto_v0.12.0:/logs # mount your Ray Tune logs
+    restart: unless-stopped
+
+  thesis-optuna:
+    image: ghcr.io/optuna/optuna-dashboard:latest
+    container_name: optuna-dashboard
+    command: >
+      sqlite:////app/bo.db
+      --host 0.0.0.0 --port 8080
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./local_data/optuna:/app:rw
+    restart: unless-stopped
+
+networks:
+  thesis:
+    driver: bridge

@@ -1,0 +1,92 @@
+dataset:
+  name: '${dataset.name}'           
+  version: '${dataset.version}'   
+
+pipeline:
+  type: { space: choice, values: '${available_pipelines_from_source}' }  # e.g., [seq2val, fe_reg]
+
+criterion:
+  kind: ${criterion_kind}                                       # 'mse' | 'mse+nasa' (use mse)
+  lam: ${criterion_lam}                                         # lambda e.g., 0.3 (only used if kind='mse+nasa')
+  reduction: ${criterion_reduction}                             # 'mean' | 'sum'
+
+preprocessing:
+  imputation:
+    method: ${imputation_method}                                # ffill_bfill | mean | median | zero
+  denoising:
+    method: ${denoising_method}                                 # none, exponential, moving_average, tsma 
+    ignore: ${denoising_ignore}                                 # e.g., [unit, cycle, os, rul]
+    group_by: ${denoising_group_by}                             # e.g., none (normalize over all machines), unit (normalize per machine)
+    params: ${denoising_params}                                 # e.g., exponential: {alpha: 0.85}, tsma: {m_cycles: 5, os_column: os, fs: ..., os_rpm_map: {'1':1800,'2':1650,'3':1500}} 
+  normalization:
+    method: ${normalization_method}                             # opc_mode (clustering by operational conditions) | classical
+    norm_type: ${normalization_type}                            # standard | minmax (only for classical method)
+    os_cols: ${normalization_os_cols}                           # e.g., operational conditions column names ['os1','os2','os3']
+    group_by: ${normalization_group_by}                         # list of column names e.g. [unit] 
+    ignore: ${normalization_ignore}                             # columns to ignore for normalization e.g., [unit, cycle]
+    sensor_cols: ${normalization_sensor_cols}                   # e.g., 'auto' (detect it automatically), else (all non-os, non-ignore, non-target columns)
+    kmax: ${normalization_kmax}                                 # maximum number of clusters to try, e.g. 6
+    min_level_frac: ${normalization_min_level_frac}             # minimum fraction of samples per cluster
+    enable_gmm: ${normalization_enable_gmm}                     # true | false (if true, use GMM instead of KMeans)
+    add_mode_onehot: ${normalization_add_mode_onehot}           # true | false (if true, add one-hot encoding of operating modes)
+  select_by_correlation:
+    apply: ${select_by_correlation_apply}                       # true | false
+    correlation_threshold: ${select_by_correlation_threshold}   # float, e.g. 0.9
+    ignore: ${select_by_correlation_ignore}                     # list, e.g. ['unit','cycle']
+  select_topk_mi:
+    apply: ${select_topk_mi_apply}                              # true | false
+    target_col: ${select_topk_mi_target_col}                    # e.g. 'rul'
+    top_k: ${select_topk_mi_top_k}                              # e.g. 12
+    ignore: ${select_topk_mi_ignore}                            # e.g. [unit, cycle]
+    n_neighbors: ${select_topk_mi_n_neighbors}                  # e.g. 3
+    random_state: ${select_topk_mi_random_state}                # e.g. 0
+  resampling:
+    apply: ${resample_apply}                                    # true | false
+    group_by: ${resample_group_by}                              # e.g., unit
+    keep_healthy_fraction: ${resample_keep_healthy_fraction}    # e.g., 0.2 (keep 20% of healthy data)
+    clip: ${target_scaling_clip}                                # e.g., 125
+    rul_col: ${resample_rul_col}                                # e.g., 'rul'
+    per_cycle: ${resample_per_cycle}                            # true | false (if true, resampling is done at cycle level)
+    cycle_col: ${resample_cycle_col}                            # e.g., 'cycle'
+  target_scaling:
+    method: ${target_scaling_method}                            # none | standard | minmax
+    column: ${target_scaling_column}                            # e.g., 'rul'
+    clip: ${target_scaling_clip}                                # e.g., 125
+    drop: ${drop_columns}                                       # e.g., ['os1', 'os2', ...]
+  cleanup:                                                      # Features to be removed after processing
+    drop: ${drop_columns}                                       # e.g., ['os1', 'os2', ...]                                       
+
+feature_engineering:
+  window:
+    drop_last: false # if drop_last = false and drop_first = false, then the windows are alligned to the same size with overlapping
+    drop_first: false
+    axis: 0
+    group_by: unit
+    size: { space: qrandint, low: '${auto_from_seq_len_min}', high: '${auto_from_seq_len_max}', q: '${auto_from_seq_len_q}' }
+    stride: { space: qrandint, low: '${auto_from_seq_len_stride_low}', high: '${auto_from_seq_len_stride_high}', q: '${auto_from_seq_len_stride_q}' }
+    by_cycle: ${window_by_cycle} # if true, no overlapping windows between cycles (for femto dataset)
+    fast: ${window_fast} # if true, only one window per cycle is created (for femto dataset) i.e. no size and stride configuration needed
+    encode_os: ${window_encode_os} # if true, encode os as integer and include it as feature for regression 
+
+feature_extraction:
+  model: { space: choice, values: '${fe_models_from_source}' }   # e.g., [cnn-ae, gnn-ae, flatten, ...]
+  models: '{}'  # agent must insert the chosen model key and its schema from source (latent_dim, channels, etc.) params should be extended with HPO search space
+
+regression:
+  model: { space: choice, values: '${reg_models_from_source}' }   # e.g., [mlp_torch, xgboost, ...]
+  multi_window:                                                   # concatenate multiple windows together
+    apply: {space: choice, values: [true, false]}                 # true | false
+    m: {space: qrandint, low: '$low_value', high: '$high_value', q: '$q_value'}                   # int, number of windows to concatenate
+  models: '{}'  # agent fills params from source (epochs, lr, weight_decay, etc.) params should be extended with HPO search space
+
+seq2val:
+  model: { space: choice, values: '${seq2val_models_from_source}' }  # e.g., [cnn_lstm, tcn, ...]
+  multi_window:                                                   # concatenate multiple windows together
+    apply: {space: choice, values: [true, false]}                # true | false
+    m: {space: qrandint, low: '$low_value', high: '$high_value', q: '$q_value'}              # int, number of windows to concatenate e.g. 2
+  trainer: '{}'  # agent fills trainer schema (epochs, scheduler, etc.) from source
+  models: '{}'   # agent fills chosen model schema from source params should be extended with HPO search space
+  
+paths:
+  root: ./data
+  artifacts: ./artifacts
