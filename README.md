@@ -1,13 +1,7 @@
-# Automated Modeling for Predictive Maintenance: Comparison and Implementation of AutoML, Agentic and LLM-Based Approaches for RUL Prediction
-
+# Automated Modeling for Predictive Maintenance: Comparison and Implementation of AutoML, Agent-Based and LLM-Based approaches for RUL Prediction
 This repository contains the implementation and experiments for a master’s thesis on automated remaining useful life (RUL) prediction. It evaluates classical AutoML, LLM-based agentic approaches, and a hybrid agentic AutoML framework on the C-MAPSS and FEMTO datasets.
 
 For more in-depth documentation, see the master’s thesis documentation: [**Master’s Thesis**](masters_thesis_jbi_v1.0.2.pdf).
-
-
-## Comparison and Implementation of AutoML, Agentic and LLM-Based Approaches for RUL Prediction
-
-This repository contains the implementation and experimental evaluation of a master’s thesis on automated Remaining Useful Life (RUL) prediction for predictive maintenance.
 
 The work systematically compares three modeling paradigms:
 
